@@ -59,7 +59,6 @@ const App: FC = () => {
       if (canvas) {
         // Create a new canvas with padding
         const paddedCanvas = document.createElement('canvas');
-        const padding = 40; // Padding around the QR code
         const mediumSize = 400; // Medium size for the final image
         
         // Set the canvas size to include padding
@@ -210,7 +209,7 @@ const App: FC = () => {
             </>
           ) : (
             <p className='text-gray-500'>
-              Enter text and click "Generate" to create a QR code.
+              Enter text and click &quot;Generate&quot; to create a QR code.
             </p>
           )}
         </div>
