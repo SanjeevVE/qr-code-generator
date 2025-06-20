@@ -1,246 +1,226 @@
 'use client';
-import React, { useState, useRef, FC } from 'react';
+import React, { useState, useRef } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+import imageCompression from 'browser-image-compression';
 
-const App: FC = () => {
-  const [qrInputText, setQrInputText] = useState<string>('');
-  const [displayQrText, setDisplayQrText] = useState<string>('');
-  const [qrTitle, setQrTitle] = useState<string>('');
-  const [expiryDate, setExpiryDate] = useState<string>('');
-  const [noExpiry, setNoExpiry] = useState<boolean>(true);
-  const qrSize: number = 256;
+const QRCodeGenerator: React.FC = () => {
+  const [qrInputText, setQrInputText] = useState('');
+  const [displayQrText, setDisplayQrText] = useState('');
+  const [qrTitle, setQrTitle] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [noExpiry, setNoExpiry] = useState(true);
+  const [showLogo, setShowLogo] = useState(true);
+  const [logoUrl, setLogoUrl] = useState('/img/userimages/smile.svg');
+  const qrSize = 256;
+
   const qrCodeRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleInputChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setQrInputText(event.target.value);
-  };
-
-  const handleTitleChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setQrTitle(event.target.value);
-  };
-
-  const handleExpiryChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setExpiryDate(event.target.value);
-  };
-
-  const handleNoExpiryChange = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    setNoExpiry(event.target.checked);
-    if (event.target.checked) {
-      setExpiryDate('');
-    }
-  };
-
-  const handleGenerateQr = (): void => {
-    let finalText = qrInputText;
-    
-    // Add expiry information if set and not "no expiry"
-    if (!noExpiry && expiryDate) {
-      const expiry = new Date(expiryDate).toISOString();
-      finalText = JSON.stringify({
-        url: qrInputText,
-        expires: expiry
-      });
-    }
-    
-    setDisplayQrText(finalText);
-  };
-
-  const handleDownload = (): void => {
-    if (qrCodeRef.current) {
-      const canvas = qrCodeRef.current.querySelector('canvas');
-      if (canvas) {
-        // Create a new canvas with padding
-        const paddedCanvas = document.createElement('canvas');
-        const mediumSize = 400; // Medium size for the final image
-        
-        // Set the canvas size to include padding
-        paddedCanvas.width = mediumSize;
-        paddedCanvas.height = mediumSize;
-        
-        // Get the context and fill with white background
-        const ctx = paddedCanvas.getContext('2d');
-        if (ctx) {
-          // Fill with white background
-          ctx.fillStyle = 'white';
-          ctx.fillRect(0, 0, paddedCanvas.width, paddedCanvas.height);
-          
-          // Calculate position to center the QR code
-          const position = (mediumSize - qrSize) / 2;
-          
-          // Draw the QR code onto the new canvas
-          ctx.drawImage(canvas, position, position);
-          
-          // Convert to image and download
-          const imageDataUrl = paddedCanvas.toDataURL('image/png');
-          const downloadLink = document.createElement('a');
-          downloadLink.href = imageDataUrl;
-          downloadLink.download = qrTitle ? `${qrTitle}.png` : 'qrcode.png';
-          document.body.appendChild(downloadLink);
-          downloadLink.click();
-          document.body.removeChild(downloadLink);
-        }
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      try {
+        const compressed = await imageCompression(e.target.files[0], {
+          maxSizeMB: 0.01,
+          maxWidthOrHeight: 50,
+          useWebWorker: true,
+        });
+        const reader = new FileReader();
+        reader.onloadend = () => setLogoUrl(reader.result as string);
+        reader.readAsDataURL(compressed);
+      } catch (err) {
+        console.error('Image upload failed:', err);
       }
     }
   };
 
-  // Calculate minimum date (today) for the date picker
+  const handleQrClick = () => {
+    if (showLogo) fileInputRef.current?.click();
+  };
+
+  const handleGenerateQr = () => {
+    let finalText = qrInputText;
+    if (!noExpiry && expiryDate) {
+      finalText = JSON.stringify({ url: qrInputText, expires: new Date(expiryDate).toISOString() });
+    }
+    setDisplayQrText(finalText);
+  };
+
+  const handleDownload = () => {
+    const canvas = qrCodeRef.current?.querySelector('canvas');
+    if (!canvas) return;
+
+    const paddedCanvas = document.createElement('canvas');
+    const ctx = paddedCanvas.getContext('2d');
+    const size = 400;
+    paddedCanvas.width = size;
+    paddedCanvas.height = size;
+
+    if (ctx) {
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, size, size);
+      const pos = (size - qrSize) / 2;
+      ctx.drawImage(canvas, pos, pos);
+
+      if (showLogo && logoUrl) {
+        const img = new Image();
+        img.src = logoUrl;
+        img.onload = () => {
+          const logoSize = 64;
+          const logoX = (size - logoSize) / 2;
+          const logoY = (size - logoSize) / 2;
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(logoX + logoSize / 2, logoY + logoSize / 2, logoSize / 2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
+          ctx.drawImage(img, logoX, logoY, logoSize, logoSize);
+          ctx.restore();
+          downloadImage(paddedCanvas.toDataURL('image/png'));
+        };
+      } else {
+        downloadImage(paddedCanvas.toDataURL('image/png'));
+      }
+    }
+  };
+
+  const downloadImage = (dataUrl: string) => {
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = qrTitle ? `${qrTitle}.png` : 'qrcode.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const today = new Date().toISOString().split('T')[0];
 
   return (
-    <div className='min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4 font-sans antialiased'>
-      <div className='bg-white p-8 rounded-xl shadow-lg w-full max-w-md'>
-        <h1 className='text-3xl font-bold text-center text-gray-800 mb-6'>
-          QR Code Generator
-        </h1>
+    <main className="min-h-screen bg-gray-100 flex flex-col items-center justify-center px-4 py-8">
+      <div className="bg-white w-full max-w-md p-8 rounded-xl shadow-lg">
+        <h1 className="text-3xl font-bold text-center text-gray-900 mb-6">QR Code Generator</h1>
 
-        <div className='mb-4'>
-          <label
-            htmlFor='qrInput'
-            className='block text-gray-700 text-sm font-semibold mb-2'
-          >
-            Enter Text or URL:
-          </label>
-          <input
-            id='qrInput'
-            type='text'
-            className='w-full p-3 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200'
-            value={qrInputText}
-            onChange={handleInputChange}
-            placeholder='Paste your URL here...'
-          />
-        </div>
+        <label className="block mb-3 text-gray-900 font-medium text-sm">Text or URL:</label>
+        <input
+          type="text"
+          value={qrInputText}
+          onChange={(e) => setQrInputText(e.target.value)}
+          className="w-full mb-4 p-3 border border-gray-300 rounded-lg text-gray-900"
+          placeholder="Paste your URL here"
+        />
 
-        <div className='mb-4'>
-          <label
-            htmlFor='qrTitle'
-            className='block text-gray-700 text-sm font-semibold mb-2'
-          >
-            QR Code Title (for download):
-          </label>
-          <input
-            id='qrTitle'
-            type='text'
-            className='w-full p-3 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200'
-            value={qrTitle}
-            onChange={handleTitleChange}
-            placeholder='Enter a title for your QR code'
-          />
-        </div>
+        <label className="block mb-3 text-gray-900 font-medium text-sm">QR Code Title:</label>
+        <input
+          type="text"
+          value={qrTitle}
+          onChange={(e) => setQrTitle(e.target.value)}
+          className="w-full mb-4 p-3 border border-gray-300 rounded-lg text-gray-900"
+          placeholder="For filename"
+        />
 
-        <div className='mb-6'>
-          <div className='flex items-center mb-2'>
+        <div className="mb-4">
+          <label className="flex items-center text-gray-900">
             <input
-              id='noExpiry'
-              type='checkbox'
-              className='mr-2 h-4 w-4'
+              type="checkbox"
               checked={noExpiry}
-              onChange={handleNoExpiryChange}
+              onChange={(e) => {
+                setNoExpiry(e.target.checked);
+                if (e.target.checked) setExpiryDate('');
+              }}
+              className="mr-2"
             />
-            <label
-              htmlFor='noExpiry'
-              className='text-gray-700 text-sm font-semibold'
-            >
-              No Expiry
-            </label>
-          </div>
-          
+            No Expiry
+          </label>
           {!noExpiry && (
-            <div>
-              <label
-                htmlFor='expiryDate'
-                className='block text-gray-700 text-sm font-semibold mb-2'
-              >
-                Expiry Date:
-              </label>
-              <input
-                id='expiryDate'
-                type='date'
-                className='w-full p-3 text-gray-700 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition duration-200'
-                value={expiryDate}
-                onChange={handleExpiryChange}
-                min={today}
-              />
-            </div>
+            <input
+              type="date"
+              value={expiryDate}
+              min={today}
+              onChange={(e) => setExpiryDate(e.target.value)}
+              className="w-full mt-2 p-2 border rounded text-gray-900"
+            />
           )}
+        </div>
+
+        <div className="mb-4">
+          <label className="flex items-center text-gray-900">
+            <input
+              type="checkbox"
+              checked={showLogo}
+              onChange={(e) => setShowLogo(e.target.checked)}
+              className="mr-2"
+            />
+            Add Center Logo
+          </label>
         </div>
 
         <button
           onClick={handleGenerateQr}
-          className={`w-full py-3 px-4 rounded-lg font-semibold transition duration-300 mb-6
-            ${
-              qrInputText.trim() && (noExpiry || expiryDate)
-                ? 'bg-green-600 hover:bg-green-700 text-white shadow-md'
-                : 'bg-gray-400 text-gray-700 cursor-not-allowed'
-            }`}
-          disabled={!qrInputText.trim() || (!noExpiry && !expiryDate)}
+          disabled={!qrInputText || (!noExpiry && !expiryDate)}
+          className="w-full bg-green-600 text-white py-3 rounded-lg mb-6 hover:bg-green-700 disabled:bg-gray-400"
         >
           Generate QR Code
         </button>
 
         <div
           ref={qrCodeRef}
-          className='flex flex-col justify-center items-center p-4 bg-gray-50 rounded-lg border border-gray-200 shadow-inner min-h-[200px] mb-6'
+          onClick={handleQrClick}
+          className={`relative flex flex-col items-center justify-center p-4 bg-gray-50 border border-gray-200 rounded-lg shadow-inner min-h-[200px] mb-6 ${
+            showLogo ? 'cursor-pointer' : ''
+          }`}
         >
           {displayQrText ? (
             <>
-              {qrTitle && <p className='mb-3 font-medium text-gray-700'>{qrTitle}</p>}
-              <QRCodeCanvas
-                value={displayQrText}
-                size={qrSize}
-                level='H'
-                includeMargin={false}
-              />
+              {qrTitle && <p className="mb-2 font-medium text-gray-900">{qrTitle}</p>}
+              <QRCodeCanvas value={displayQrText} size={qrSize} level="H" includeMargin={false} />
+              {showLogo && (
+                <img
+                  src={logoUrl}
+                  alt="QR Logo"
+                  className="absolute w-16 h-16 rounded-full object-cover"
+                />
+              )}
               {!noExpiry && expiryDate && (
-                <p className='mt-2 text-xs text-red-500'>
+                <p className="mt-2 text-xs text-red-600">
                   Expires: {new Date(expiryDate).toLocaleDateString()}
                 </p>
               )}
-              <p className='mt-2 text-xs text-gray-500 break-all max-w-full overflow-hidden'>
-                {qrInputText}
-              </p>
+              <p className="mt-1 text-xs text-gray-900 break-all text-center">{qrInputText}</p>
             </>
           ) : (
-            <p className='text-gray-500'>
-              Enter text and click &quot;Generate&quot; to create a QR code.
-            </p>
+            <p className="text-gray-700 text-sm">Enter text and click "Generate" to preview</p>
           )}
         </div>
 
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={handleImageUpload}
+          className="hidden"
+        />
+
         <button
           onClick={handleDownload}
-          className={`w-full py-3 px-4 rounded-lg font-semibold transition duration-300
-            ${
-              displayQrText
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md'
-                : 'bg-gray-400 text-gray-700 cursor-not-allowed'
-            }`}
           disabled={!displayQrText}
+          className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
         >
           Download QR Code
         </button>
       </div>
 
-      <p className='mt-8 text-gray-600 text-sm text-center'>
-        Developed with <span className='text-red-500'>❤️</span> by{' '}
+      <p className="mt-8 text-gray-800 text-sm text-center">
+        Developed with <span className="text-red-500">❤️</span> by{' '}
         <a
-          href='https://knowaboutsanjeev.netlify.app/' 
-          target='_blank'
-          rel='noopener noreferrer'
-          className='text-blue-600 hover:underline hover:text-blue-800 transition'
+          href="https://knowaboutsanjeev.netlify.app/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-600 hover:underline"
         >
           Sanjeev
         </a>
       </p>
-    </div>
+    </main>
   );
 };
 
-export default App;
+export default QRCodeGenerator;
