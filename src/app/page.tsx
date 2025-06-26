@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 
 const QRCodeGenerator: React.FC = () => {
   const [qrInputText, setQrInputText] = useState('');
@@ -99,48 +100,44 @@ const QRCodeGenerator: React.FC = () => {
         ctx.fillStyle = 'white';
         ctx.fillRect(0, 0, size, size);
 
-        const qrImg = new Image();
+        const qrImg: HTMLImageElement = document.createElement('img');
         qrImg.crossOrigin = 'anonymous';
 
-        await new Promise((resolve, reject) => {
+        await new Promise((resolve) => {
           qrImg.onload = resolve;
-          qrImg.onerror = reject;
+          qrImg.onerror = resolve;
           qrImg.src = qrCodeDataUrl;
         });
 
         ctx.drawImage(qrImg, 0, 0, size, size);
 
         if (showLogo && logoUrl) {
-          try {
-            const logoImg = new Image();
-            logoImg.crossOrigin = 'anonymous';
+          const logoImg: HTMLImageElement = document.createElement('img');
+          logoImg.crossOrigin = 'anonymous';
 
-            await new Promise((resolve, reject) => {
-              logoImg.onload = resolve;
-              logoImg.onerror = resolve;
-              logoImg.src = logoUrl;
-            });
+          await new Promise((resolve) => {
+            logoImg.onload = resolve;
+            logoImg.onerror = resolve;
+            logoImg.src = logoUrl;
+          });
 
-            const logoSize = 80;
-            const logoX = (size - logoSize) / 2;
-            const logoY = (size - logoSize) / 2;
+          const logoSize = 80;
+          const logoX = (size - logoSize) / 2;
+          const logoY = (size - logoSize) / 2;
 
-            ctx.fillStyle = 'white';
-            ctx.beginPath();
-            ctx.arc(size / 2, size / 2, logoSize / 2 + 5, 0, Math.PI * 2);
-            ctx.fill();
+          ctx.fillStyle = 'white';
+          ctx.beginPath();
+          ctx.arc(size / 2, size / 2, logoSize / 2 + 5, 0, Math.PI * 2);
+          ctx.fill();
 
-            ctx.save();
-            ctx.beginPath();
-            ctx.arc(size / 2, size / 2, logoSize / 2, 0, Math.PI * 2);
-            ctx.closePath();
-            ctx.clip();
+          ctx.save();
+          ctx.beginPath();
+          ctx.arc(size / 2, size / 2, logoSize / 2, 0, Math.PI * 2);
+          ctx.closePath();
+          ctx.clip();
 
-            ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
-            ctx.restore();
-          } catch (logoError) {
-            console.log('Logo loading failed, continuing without logo');
-          }
+          ctx.drawImage(logoImg, logoX, logoY, logoSize, logoSize);
+          ctx.restore();
         }
 
         const dataUrl = canvas.toDataURL('image/png', 1.0);
@@ -292,17 +289,19 @@ const QRCodeGenerator: React.FC = () => {
                 </p>
               )}
               <div className='relative'>
-                <img
+                <Image
                   src={qrCodeDataUrl}
                   alt='Generated QR Code'
-                  className='w-64 h-64 block'
-                  style={{ width: '256px', height: '256px' }}
+                  width={256}
+                  height={256}
                 />
                 {showLogo && logoUrl && (
-                  <img
+                  <Image
                     src={logoUrl}
                     alt='QR Logo'
-                    className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-16 h-16 rounded-full object-cover border-2 border-white'
+                    width={64}
+                    height={64}
+                    className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 rounded-full object-cover border-2 border-white'
                   />
                 )}
               </div>
@@ -331,7 +330,7 @@ const QRCodeGenerator: React.FC = () => {
                 />
               </svg>
               <p className='text-gray-500 text-sm'>
-                Enter text and click "Generate" to preview
+                Enter text and click &quot;Generate&quot; to preview
               </p>
               {showLogo && (
                 <p className='text-gray-400 text-xs mt-2'>

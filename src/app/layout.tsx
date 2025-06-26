@@ -1,10 +1,10 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://your-domain.com'), // Replace with your actual domain
-  title: "Create QR",
-  description: "Convert your link to QR code",
+  metadataBase: new URL('https://getinstantqr.netlify.app/'),
+  title: 'Create QR',
+  description: 'Convert your link to QR code',
   icons: {
     icon: '/vercel.svg',
     shortcut: '/vercel.svg',
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
         width: 1200,
         height: 630,
         alt: 'QR Code Generator',
-      }
+      },
     ],
     type: 'website',
   },
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     title: 'Create QR',
     description: 'Convert your link to QR code easily',
     images: ['/qr-logo.png'],
-  }
+  },
 };
 
 export default function RootLayout({
@@ -37,13 +37,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang='en'>
       <head>
-        <link rel="icon" href="/vercel.svg" />
+        <link rel='icon' href='/vercel.svg' />
       </head>
-      <body className="antialiased">
-        {children}
-      </body>
+      <body className='antialiased'>{children}</body>
     </html>
   );
 }
